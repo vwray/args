@@ -12,7 +12,7 @@ import msprime
 import demes
 import sys
 
-numberOfSamples = sys.argv[1]
+numberOfSamples = int(sys.argv[1])
 sequenceLength = sys.argv[2]
 inputDemographyFile = sys.argv[3]
 outputVCFFile = sys.argv[4]
