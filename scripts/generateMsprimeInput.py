@@ -18,13 +18,14 @@ inputDemographyFile = sys.argv[3]
 outputVCFFile = sys.argv[4]
 outputNewickFile = sys.argv[5]
 outputBreakpointsFile = sys.argv[6]
+recombRate = float(sys.argv[7])
 
 model = demes.load(inputDemographyFile)
 demo = msprime.Demography.from_demes(model)
 ts = msprime.sim_ancestry(
                 samples={'A': numberOfSamples, 'YRI': numberOfSamples},
                 sequence_length= int(sequenceLength),
-                recombination_rate= 1e-8,
+                recombination_rate= recombRate,
                 random_seed=83,
                 demography=demo,
                 record_migrations=True,

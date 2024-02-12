@@ -14,6 +14,9 @@ from bisect import bisect_left
 from compare_two_trees import compare_trees
 from matplotlib import pyplot as plt
 import sys
+import seaborn as sns
+
+sns.set_theme()
 
 numberOfSamples = sys.argv[1]
 sequenceLength = sys.argv[2]
@@ -22,7 +25,7 @@ trueTreesBreakpointsFile = sys.argv[4]
 relateNewickFile = sys.argv[5]
 relateBreakpointsFile = sys.argv[6]
 rentTreesFile = sys.argv[7]
-rentNewickFile = sys.arg[8]
+rentNewickFile = sys.argv[8]
 argweaverNewickFile = sys.argv[9]
 argweaverBreakpointsFile = sys.argv[10]
 plotFile = sys.argv[11]
@@ -130,7 +133,7 @@ for i in range(len(argweaverPositions)):
 
 
 trueDistances = []
-
+'''
 #compare adjacent true msprime trees
 previousTree = trueTreeList[0]
 for i in range(1, len(trueTreeList)):
@@ -161,22 +164,27 @@ for i in range(1, len(argweaverTreeList)):
     [nl, ei1, ei2, fn, fp, rf] = compare_trees(previousTree,argweaverTreeList[i])
     argweaverEstDistances.append(rf)
     previousTree = argweaverTreeList[i]
-
+'''
 trueXValues = breakpoints[1:len(breakpoints)-1]
 estXValues = positions[:-1]
 relateEstXValues = relateBreakpoints[:-1]
 argweaverEstXValues = argweaverPositions[1:]
 
-
+plt.figure(1)
+ax1 = plt.subplot(211)
 #Plot rf distances between true and est trees
-#plt.plot(positions, rentDistances, label='RENT+', marker='o')
-#plt.plot(relateBreakpoints, relateDistances, label='Relate', marker='o')
-#plt.plot(argweaverPositions, argweaverDistances, label='ARGweaver', marker='o')
-
+ax1.plot(positions, rentDistances, label='RENT+')
+ax1.plot(newXValues, relateDistances, label='Relate')
+ax1.plot(argweaverPositions, argweaverDistances, label='ARGweaver')
+plt.title("RF Distances and False Positives between True and Estimated Trees")
+plt.tick_params(labelbottom = False, bottom = False)
+plt.ylabel('RF Distance')
+plt.legend()
+ax2 = plt.subplot(212, sharex=ax1)
 #Plot false positives
-plt.plot(positions, rentFalsePositives, label='RENT+', marker='o')
-plt.plot(newXValues, relateFalsePositives, label='Relate', marker='o')
-plt.plot(argweaverPositions, argweaverFalsePositives, label='ARGweaver', marker='o')
+ax2.plot(positions, rentFalsePositives, label='RENT+')
+ax2.plot(newXValues, relateFalsePositives, label='Relate')
+ax2.plot(argweaverPositions, argweaverFalsePositives, label='ARGweaver')
 
 #Plot adjacent tree distances
 #plt.plot(trueXValues, trueDistances, label='msprime', marker='o')
@@ -186,7 +194,7 @@ plt.plot(argweaverPositions, argweaverFalsePositives, label='ARGweaver', marker=
 #plt.plot(argweaverEstXValues, argweaverEstDistances, label='ARGweaver', marker='o')
 
 #plt.title("Distances between Adjacent True and Estimated Trees")
-plt.title("False Positives in Topology of Estimated Trees")
+#plt.title("False Positives in Topology of Estimated Trees")
 plt.xlabel("Position on genome")
 #plt.ylabel("RF Distance")
 plt.ylabel("Number of False Positives")
