@@ -22,6 +22,7 @@ with open(inputFile, 'r') as fin:
     next(tsv_reader)
     iteration=[]
     prior=[]
+    prior2=[]
     likelihood=[]
     joint=[]
     recombs=[]
@@ -31,11 +32,12 @@ with open(inputFile, 'r') as fin:
     for row in tsv_reader:
         iteration.append(int(row[1]))
         prior.append(float(row[2]))
-        likelihood.append(float(row[3]))
-        joint.append(float(row[4]))
-        recombs.append(int(row[5]))
-        noncompats.append(int(row[6]))
-        arglen.append(float(row[7]))
+        prior2.append(float(row[3]))
+        likelihood.append(float(row[4]))
+        joint.append(float(row[5]))
+        recombs.append(int(row[6]))
+        noncompats.append(int(row[7]))
+        arglen.append(float(row[8]))
 
     plt.figure(1)
     ax1 = plt.subplot(321)
