@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-A script to plot ARGweaver statistics to monitor convergence.
-
 Created on Sat Dec 16 20:35:18 2023
 
-@author: Valerie Wray
+A script to plot ARGweaver stats to monitor convergence.
+
+@author: valer
 """
 
 import csv
 from matplotlib import pyplot as plt
-import sys
 
-numberOfSamples = sys.argv[1]
-sequenceLength = sys.argv[2]
-inputFile = sys.argv[3]
-plotFile = sys.argv[4]
+sequenceLength = '100_000'
+numberOfSamples = 3
+
+inputFile = "H:\\My Drive\\Fall2023\\research\\argweaverOutput\\" + sequenceLength + "\\out.stats"
 
 with open(inputFile, 'r') as fin:
     tsv_reader = csv.reader(fin, delimiter="\t")
@@ -22,7 +21,6 @@ with open(inputFile, 'r') as fin:
     next(tsv_reader)
     iteration=[]
     prior=[]
-    prior2=[]
     likelihood=[]
     joint=[]
     recombs=[]
@@ -32,13 +30,31 @@ with open(inputFile, 'r') as fin:
     for row in tsv_reader:
         iteration.append(int(row[1]))
         prior.append(float(row[2]))
-        prior2.append(float(row[3]))
-        likelihood.append(float(row[4]))
-        joint.append(float(row[5]))
-        recombs.append(int(row[6]))
-        noncompats.append(int(row[7]))
-        arglen.append(float(row[8]))
+        likelihood.append(float(row[3]))
+        joint.append(float(row[4]))
+        recombs.append(int(row[5]))
+        noncompats.append(int(row[6]))
+        arglen.append(float(row[7]))
+        #tree = tsconvert.from_newick(newickString, min_edge_length=0)
+        #print(tree)
+    
+    #print(iteration)
+    print(prior)
 
+    import numpy as np
+    
+    t = np.arange(0, 2001, 1)
+    '''
+    ax1 = plt.subplot(211)
+    ax1.plot(t, np.sin(2*np.pi*t))
+    
+    ax2 = plt.subplot(212, sharex=ax1)
+    ax2.plot(t, np.sin(4*np.pi*t))
+    
+    plt.show()
+    
+    
+    '''
     plt.figure(1)
     ax1 = plt.subplot(321)
     ax1.plot(iteration,prior)
@@ -65,12 +81,4 @@ with open(inputFile, 'r') as fin:
     plt.ylabel('Arglen')
     plt.xlabel('MCMC Iteration')
     plt.tight_layout()
-    plt.savefig(plotFile)
-    
-    maxLikelihood = max(likelihood)
-    maxLikelihood_index = likelihood.index(maxLikelihood)
-    maxLikelihood_iteration = iteration[maxLikelihood_index]
-    print("max likelihood: ")
-    print(maxLikelihood)
-    print("max linkelihood index: ", maxLikelihood_index)
-    print("max linkelihood iteration: ", maxLikelihood_iteration)
+    plt.savefig('H://My Drive//Fall2023//research//outputFiles//plots//' + sequenceLength + '//argweaverConvergence_5000iter.png')

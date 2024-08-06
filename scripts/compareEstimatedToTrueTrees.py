@@ -15,8 +15,9 @@ from compare_two_trees import compare_trees
 from matplotlib import pyplot as plt
 import sys
 import seaborn as sns
+import tskit
 
-sns.set_theme()
+#sns.set_theme()
 
 numberOfSamples = sys.argv[1]
 sequenceLength = sys.argv[2]
@@ -29,8 +30,10 @@ rentNewickFile = sys.argv[8]
 argweaverNewickFile = sys.argv[9]
 argweaverBreakpointsFile = sys.argv[10]
 plotFile = sys.argv[11]
+trueTreesTreesFile = sys.argv[12]
 
 #True msprime trees
+trueTreesTskitTrees = tskit.load(trueTreesTreesFile)
 trueTreeList = dendropy.TreeList.get(path=trueTreesNewickFile, schema="newick")
 print("number of true trees: ", len(trueTreeList))
 
@@ -175,7 +178,7 @@ ax1 = plt.subplot(211)
 #Plot rf distances between true and est trees
 ax1.plot(positions, rentDistances, label='RENT+')
 ax1.plot(newXValues, relateDistances, label='Relate')
-ax1.plot(argweaverPositions, argweaverDistances, label='ARGweaver')
+#ax1.plot(argweaverPositions, argweaverDistances, label='ARGweaver')
 plt.title("RF Distances and False Positives between True and Estimated Trees")
 plt.tick_params(labelbottom = False, bottom = False)
 plt.ylabel('RF Distance')
@@ -184,7 +187,25 @@ ax2 = plt.subplot(212, sharex=ax1)
 #Plot false positives
 ax2.plot(positions, rentFalsePositives, label='RENT+')
 ax2.plot(newXValues, relateFalsePositives, label='Relate')
-ax2.plot(argweaverPositions, argweaverFalsePositives, label='ARGweaver')
+#ax2.plot(argweaverPositions, argweaverFalsePositives, label='ARGweaver')
+
+
+#get migrating tracts (introgressed segments)
+neanderthal_id = [p.id for p in trueTreesTskitTrees.populations() if p.metadata['name']=='B'][0]
+migrating_tracts = []
+# Get all tracts that migrated into the neanderthal population
+for migration in trueTreesTskitTrees.migrations():
+    if migration.dest == neanderthal_id:
+        migrating_tracts.append((migration.left, migration.right))
+        
+for tract in migrating_tracts:
+    print("begin tract: ", tract[0])
+    print("end tract: ", tract[1])
+    #ax1.scatter(tract[0], 0.5)
+    #ax1.scatter(tract[1], 0.7)
+    ax1.fill_between(tract, [1,1], facecolor='green', alpha=.6)
+    ax2.fill_between(tract, [9,9], facecolor='green', alpha=.6)
+
 
 #Plot adjacent tree distances
 #plt.plot(trueXValues, trueDistances, label='msprime', marker='o')

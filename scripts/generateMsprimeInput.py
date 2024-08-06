@@ -18,7 +18,8 @@ inputDemographyFile = sys.argv[3]
 outputVCFFile = sys.argv[4]
 outputNewickFile = sys.argv[5]
 outputBreakpointsFile = sys.argv[6]
-recombRate = float(sys.argv[7])
+outputTreesFile = sys.argv[7]
+recombRate = float(sys.argv[8])
 
 model = demes.load(inputDemographyFile)
 demo = msprime.Demography.from_demes(model)
@@ -38,6 +39,8 @@ mts = msprime.sim_mutations(ts, rate=1.2e-8, random_seed=83)
 # output vcf file
 with open(outputVCFFile, 'w') as vcf:
     mts.write_vcf(vcf, contig_id=1)
+    
+mts.dump(outputTreesFile)
 
 nodeLabels = {}
 for i in range(4*numberOfSamples):

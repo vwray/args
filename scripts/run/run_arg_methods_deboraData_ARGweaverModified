@@ -1,0 +1,149 @@
+module load conda
+conda init bash
+source ~/.bashrc
+conda activate arg
+numberOfSamples=2
+diploidSamples=4
+sequenceLength="250_000"
+sequenceLenInt=250000
+recombRate=2e-8
+mutationRate=2e-8
+baseDirectory="/fs/cbcb-lab/ekmolloy/vwray/args"
+scriptRepo="${baseDirectory}/gitRepoScripts/args/scripts"
+outputDirectory="${baseDirectory}/output"
+
+cd ${outputDirectory}
+
+newDirectory=$(date +"%Y-%m-%dT%H:%M:%S")_${sequenceLength}_debora
+
+mkdir ${newDirectory}
+
+outputDirectory=${outputDirectory}/${newDirectory}
+
+#call the Python script to generate msprime VCF, Newick, and breakpoint files
+cp sim_l250kb_0.vcf "${outputDirectory}/msprimeVCF.vcf"
+cp sim_l250kb_0.trees "${outputDirectory}/msprimeTrees.trees"
+python ${scriptRepo}/convertVCFTreesToNewickBreakpoints.py ${numberOfSamples} \
+                "${outputDirectory}/msprimeVCF.vcf" \
+                "${outputDirectory}/msprimeTrees.trees" \
+                "${outputDirectory}/msprimeNewick.newick" \
+                "${outputDirectory}/msprimeBreakpoints.txt" \
+
+#RENT+
+
+#convert VCF to RENT+ input
+python ${scriptRepo}/rentPlus/vcfToRentInput.py "${outputDirectory}/msprimeVCF.vcf" \
+                 "${outputDirectory}/rentOutput.txt"
+
+#run RENT+ with branch lengths
+cd ${outputDirectory}
+java -Xmx24g -jar /fs/cbcb-lab/ekmolloy/group/software/RentPlus/RentPlus.jar -t rentOutput.txt
+
+#Relate
+
+#convert VCF to haps and sample for Relate input
+cd ${outputDirectory}
+/fs/cbcb-lab/ekmolloy/group/software/relate/bin/RelateFileFormats \
+                 --mode ConvertFromVcf \
+                 --haps relateHaps.haps \
+                 --sample relateSample.sample \
+                 -i msprimeVCF
+
+#create genetic map for Relate input
+python ${scriptRepo}/relate/createGeneticMap.py ${sequenceLength} \
+                 ${recombRate} \
+                 "${outputDirectory}/relateGeneticMap.txt"
+
+#run Relate
+cd ${outputDirectory}
+/fs/cbcb-lab/ekmolloy/group/software/relate/bin/Relate \
+      --mode All \
+      -m $mutationRate \
+      -N 20000 \
+      --haps relateHaps.haps \
+      --sample relateSample.sample \
+      --map relateGeneticMap.txt \
+      --seed 48 \
+      -o relateOutput
+
+#convert Relate output to tree sequence
+/fs/cbcb-lab/ekmolloy/group/software/relate/bin/RelateFileFormats \
+                 --mode ConvertToTreeSequence \
+                 -i relateOutput \
+                 -o relateOutput
+
+#convert Relate tree sequence to Newick and breakpoints
+python ${scriptRepo}/relate/convertRelateOutput.py ${numberOfSamples} \
+                  ${sequenceLength} \
+                  relateOutput.trees \
+                  relateNewick.txt \
+                  relateBreakpoints.txt
+
+#ARGweaver
+
+REP=0; OUTPREF=l250kb_smcp; SITES=msprimeVCF.sites; MU=2e-8; RE=2e-8; Ne=1e4; NITERS=1200; OUTDIR=argweaverOutput; LEN=250000
+OUTFILE=${OUTDIR}/arg-sample
+#convert VCF to ARGweaver sites input
+cd ${outputDirectory}
+python /fs/cbcb-lab/ekmolloy/group/software/ARGsims/scripts/argweaver/2_vcf2sites.py msprimeVCF.vcf ${diploidSamples} ${sequenceLenInt} ${outputDirectory}
+#run ARGweaver
+conda activate py2
+#/fs/cbcb-lab/ekmolloy/group/software/argweaver-fork/argweaver/argweaver/bin/arg-sample -s msprimeVCF.sites \
+#                 -N 10000 \
+#                 -r ${recombRate} \
+#                 -m ${mutationRate} \
+#                 --ntimes 20.0 \
+#                 --maxtime 200e4 \
+#                 -c 10 \
+#                 -n 2000 \
+#                 --randseed 632 \
+#                 -o argweaverOutput
+
+/fs/cbcb-lab/ekmolloy/group/software/argweaver-fork/argweaver/bin/arg-sample --sites $SITES --mutrate $MU --recombrate $RE --popsize $Ne --output $OUTFILE --smc-prime --iters $NITERS
+
+#extract ARGweaver TMRCA
+/fs/cbcb-lab/ekmolloy/group/software/argweaver-fork/argweaver/bin/arg-extract-tmrca ${OUTFILE}.%d.smc.gz \
+    > argweaverTMRCA.txt
+
+#determine ARGweaver local consensus trees
+/fs/cbcb-lab/ekmolloy/group/software/argweaver-fork/argweaver/bin/arg-cons ${OUTFILE}.%d.smc.gz -s 1000 -d 20 > argweaverConsensusTrees.txt
+
+#convert ARGweaver consensus trees to Newick and breakpoints
+conda activate arg
+python ${scriptRepo}/argweaver/convertArgweaverConsensusTrees.py ${numberOfSamples} \
+                  ${sequenceLength} \
+                  argweaverConsensusTrees.txt \
+                  argweaverNewick.txt \
+                  argweaverBreakpoints.txt
+
+python ${scriptRepo}/argweaver/plotArgweaverConvergence.py ${numberOfSamples} \
+                  ${sequenceLength} \
+                  ${OUTFILE}.stats \
+                  argweaverConvergencePlot.png
+
+
+# Compare trees from all 3 methods
+python ${scriptRepo}/compareEstimatedToTrueTrees.py ${numberOfSamples} \
+                  ${sequenceLength} \
+                  msprimeNewick.newick \
+                  msprimeBreakpoints.txt \
+                  relateNewick.txt \
+                  relateBreakpoints.txt \
+                  rentOutput.txt.trees \
+                  rentNewick.txt \
+                  argweaverNewick.txt \
+                  argweaverBreakpoints.txt \
+                  treeComparison.png
+
+# Compare TMRCA from all 3 methods
+python ${scriptRepo}/compareTMRCA.py ${numberOfSamples} \
+                  ${sequenceLength} \
+                  msprimeNewick.newick \
+                  msprimeBreakpoints.txt \
+                  relateNewick.txt \
+                  relateBreakpoints.txt \
+                  rentOutput.txt.trees \
+                  rentNewick.txt \
+                  argweaverTMRCA.txt \
+                  treeTMRCA.png \
+                  10000

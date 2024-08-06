@@ -15,6 +15,7 @@ from bisect import bisect_left
 from matplotlib import pyplot as plt
 import sys
 import seaborn as sns
+import numpy as np
 
 sns.set_theme()
 
@@ -29,6 +30,7 @@ rentNewickFile = sys.argv[8]
 argweaverTMRCAFile = sys.argv[9]
 plotFile = sys.argv[10]
 popSize = sys.argv[11]
+averageErrorFile = sys.argv[12]
 
 #True msprime trees
 trueTreeList = dendropy.TreeList.get(path=trueTreesNewickFile, schema="newick")
@@ -102,6 +104,7 @@ newXValues = []
 trueBranchLengths = []
 estBranchLengths = []
 relateEstBranchLengths = []
+averages = []
 
 #for each msprime position, get the TMRCA of the estimated RENT+ tree
 for i in range(len(trueTreeList)):
@@ -141,10 +144,52 @@ with open(argweaverTMRCAFile, 'r') as file:
         #argweaverTmrcaLow.append(float(row[4]))
         #argweaverTmrcaHigh.append(float(row[5]))
 
+xValues = []#(x for x in range(1,int(sequenceLength)) if x % 1 == 0)
+for i in range(0,int(sequenceLength)):
+    xValues.append(i)
+rentYValues = []
+relateYValues = []
+argweaverYValues = []
+for i in xValues:
+    msprimeIndex = bisect_left(breakpoints[1:],i)
+    rentIndex = bisect_left(positions[1:], i)
+    relateIndex = bisect_left(relateXValues, i)
+    argweaverIndex = bisect_left(argweaverPositions, i)
+    if msprimeIndex < len(trueBranchLengths):
+        if rentIndex < len(estBranchLengths):
+            rentYValues.append(estBranchLengths[rentIndex] - trueBranchLengths[msprimeIndex])
+        if relateIndex < len(relateEstBranchLengths):
+            relateYValues.append(relateEstBranchLengths[relateIndex] - trueBranchLengths[msprimeIndex])
+        if argweaverIndex < len(argweaverTmrcaAvg):
+            argweaverYValues.append(argweaverTmrcaAvg[argweaverIndex] - trueBranchLengths[msprimeIndex])
+
+for i in xValues: 
+    if i >= len(rentYValues) or i >= len(relateYValues) or i >= len(argweaverYValues):
+        break
+    avg = (rentYValues[i] 
+     + relateYValues[i]
+     + argweaverYValues[i])/3
+    print(f"avg{avg}")
+    averages.append(avg)
+    
+#calculate average error of each method    
+with open(averageErrorFile, 'w') as fout:
+    #fout.write('ARGweaver average error:' + str(sum(argweaverYValues)/len(argweaverYValues)) + '\n')
+    #fout.write('Relate average error:' + str(sum(relateYValues)/len(relateYValues)) + '\n')
+    #fout.write('RENT+ average error:' + str(sum(rentYValues)/len(rentYValues)) + '\n')
+    
+    fout.write(',TMRCA error in number of generations\n')
+    fout.write('RENT+,' + str(sum(list(map(abs, rentYValues)))/len(rentYValues)) + '\n')
+    fout.write('Relate,' + str(sum(list(map(abs, relateYValues)))/len(relateYValues)) + '\n')
+    fout.write('ARGweaver,' + str(sum(list(map(abs, argweaverYValues)))/len(argweaverYValues)) + '\n')
+
+
 #plt.plot(breakpoints[1:], trueBranchLengths, label='true')
-plt.plot(positions[1:], estBranchLengths - trueBranchLengths, label='RENT+')
-plt.plot(relateXValues, relateEstBranchLengths - trueBranchLengths, label='Relate')
-plt.plot(argweaverPositions, argweaverTmrcaAvg - trueBranchLengths, label='ARGweaver')
+plt.plot(xValues, np.zeros(len(xValues)),color='black')
+plt.plot(xValues[:len(rentYValues)], rentYValues, label='RENT+')
+plt.plot(xValues[:len(relateYValues)], relateYValues, label='Relate')
+plt.plot(xValues[:len(argweaverYValues)], argweaverYValues, label='ARGweaver')
+plt.plot(xValues[:len(averages)], averages, label='average')
 
 #plt.plot(xValuesBranchLengths, relateEstBranchLengths, marker='o')
 #plt.plot([0,1],[0,1], transform=plt.transAxes)
@@ -156,7 +201,7 @@ plt.plot(argweaverPositions, argweaverTmrcaAvg - trueBranchLengths, label='ARGwe
 #plt.plot(newXValues, estBranchLengths)#, label='RENT+')
 plt.title("TMRCA Error in Estimated Trees")
 plt.xlabel("Position on genome")
-plt.ylabel("TMRCA Error (in number of generations) (estimated minus true)")
+plt.ylabel("TMRCA Error (in number of generations)")
 plt.legend()
 plt.tight_layout()
 plt.savefig(plotFile)

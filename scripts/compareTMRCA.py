@@ -94,7 +94,9 @@ relateDistances = []
 
 estPositionsIndex=0
         
-xValues = (x for x in range(1,int(sequenceLength)) if x % 1 == 0)
+xValues = []#(x for x in range(1,int(sequenceLength)) if x % 1 == 0)
+for i in range(0,int(sequenceLength)):
+    xValues.append(i)
 
 newXValues = []
 
@@ -102,6 +104,7 @@ newXValues = []
 trueBranchLengths = []
 estBranchLengths = []
 relateEstBranchLengths = []
+averages = []
 
 #for each msprime position, get the TMRCA of the estimated RENT+ tree
 for i in range(len(trueTreeList)):
@@ -140,11 +143,21 @@ with open(argweaverTMRCAFile, 'r') as file:
         argweaverTmrcaAvg.append(float(row[3]))
         #argweaverTmrcaLow.append(float(row[4]))
         #argweaverTmrcaHigh.append(float(row[5]))
+     
+for i in xValues: 
+    if i > relateXValues[-1] or i > positions[-1] or i > argweaverPositions[-1]:
+        break
+    avg = (relateEstBranchLengths[bisect_left(relateXValues,i)] 
+     + estBranchLengths[bisect_left(positions[1:],i)]
+     + argweaverTmrcaAvg[bisect_left(argweaverPositions,i)])/3
+    print(f"avg{avg}")
+    averages.append(avg)
 
 plt.plot(breakpoints[1:], trueBranchLengths, label='true')
 plt.plot(positions[1:], estBranchLengths, label='RENT+')
 plt.plot(relateXValues, relateEstBranchLengths, label='Relate')
 plt.plot(argweaverPositions, argweaverTmrcaAvg, label='ARGweaver')
+plt.plot(xValues[:len(averages)], averages, label='average')
 
 #plt.plot(xValuesBranchLengths, relateEstBranchLengths, marker='o')
 #plt.plot([0,1],[0,1], transform=plt.transAxes)
